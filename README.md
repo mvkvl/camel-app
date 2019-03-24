@@ -26,3 +26,6 @@ camel:
     output: <directory for output files>
     error:  <directory for files processed with exception>
 ```
+
+## in action
+'distr' directory contains compiled version with run script and needed configurations
