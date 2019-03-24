@@ -27,5 +27,5 @@ camel:
     error:  <directory for files processed with exception>
 ```
 
-## in action
+## see in action
 'distr' directory contains compiled version with run script and needed configurations
