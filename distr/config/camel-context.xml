@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:camel="http://camel.apache.org/schema/spring"
+       xmlns:util="http://www.springframework.org/schema/util"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+          http://www.springframework.org/schema/beans/spring-beans-4.2.xsd
+          http://camel.apache.org/schema/spring
+          http://camel.apache.org/schema/spring/camel-spring.xsd
+          http://www.springframework.org/schema/util
+          http://www.springframework.org/schema/util/spring-util-4.2.xsd">
+
+    <!--<bean id="fileRouter"      class="task.integer.file.FileRouter"    />-->
+    <bean id="reportProcessor" class="task.integer.processors.SensorReportProcessor" />
+
+    <camelContext xmlns="http://camel.apache.org/schema/spring">
+        <!--<routeBuilder ref="fileRouter" />-->
+        <properties>
+            <property key="CamelLogEipName" value="route.log"/>
+        </properties>
+
+        <endpoint id="dir_input"  uri="file://${camel.directories.input}"/>
+        <endpoint id="dir_output" uri="file://${camel.directories.output}"/>
+        <endpoint id="dir_error"  uri="file://${camel.directories.error}"/>
+        <endpoint id="rabbit_uri" uri="rabbitmq:${spring.rabbitmq.exchange}?queue=${spring.rabbitmq.queue}"/>
+
+        <dataFormats>
+            <jacksonxml id="reportXML"
+                        prettyPrint="true"
+                        unmarshalTypeName="task.integer.model.SensorReport"/>
+            <json id="reportJSON"
+                  prettyPrint="true"
+                  library="Jackson"
+                  objectMapper="com.camel.CustomObjectMapper"
+                  unmarshalTypeName="task.integer.model.SensorReport"/>
+        </dataFormats>
+
+        <onException useOriginalMessage="true">
+            <exception>java.lang.Exception</exception>
+            <redeliveryPolicy maximumRedeliveries="0" disableRedelivery="true"/>
+            <handled>
+                <constant>true</constant>
+            </handled>
+            <log loggingLevel="ERROR" message="error processing file ${file:name}: ${exception}"/>
+            <to ref="dir_error"/>
+        </onException>
+
+        <route id="reportProcessing">
+            <from ref="dir_input"/>
+            <log loggingLevel="INFO" message="read file ${file:name}"/>
+            <unmarshal ref="reportXML"/>
+
+            <log loggingLevel="INFO" message="persist to PgSQL ${body}"/>
+            <process ref="reportProcessor"/>
+
+            <removeHeader headerName="*"/>
+            <log loggingLevel="INFO" message="send to RabbitMQ ${body}"/>
+            <to ref="rabbit_uri"/>
+
+            <log loggingLevel="INFO" message="convert to JSON ${body}"/>
+            <marshal ref="reportJSON"/>
+
+            <log loggingLevel="INFO" message="change file extension to 'json'"/>
+            <setHeader headerName="Exchange.FILE_NAME">
+                <camel:simple>${file:name.noext}.json</camel:simple>
+            </setHeader>
+
+            <log loggingLevel="INFO" message="save to output directory as ${file:name}"/>
+            <to ref="dir_output"/>
+        </route>
+
+    </camelContext>
+
+</beans>

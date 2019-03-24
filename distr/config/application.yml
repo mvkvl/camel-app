@@ -1,0 +1,39 @@
+spring:
+  main:
+    banner-mode: "off"
+    allow-bean-definition-overriding: true
+  profiles:
+    active: main
+  datasource:
+    url: jdbc:postgresql://localhost:5432/mydb
+    username: postgres
+    password: pass
+    driverClassName: org.postgresql.Driver
+  jpa:
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: false
+        show_sql: false
+    hibernate:
+      ddl-auto: update
+      current_session_context_class: org.springframework.orm.hibernate5.SpringSessionContext
+
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+    exchange: sensors.direct
+    queue: sensor_report_processing
+
+camel:
+  springboot:
+    main-run-controller: true
+  directories:
+    input:  ./data/input
+    output: ./data/output
+    error:  ./data/error
+
+logging:
+  config: ./config/log4j2.xml
